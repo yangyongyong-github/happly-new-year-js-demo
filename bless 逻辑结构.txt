@@ -1,0 +1,306 @@
+// 设置页面的整体属性----整体页面的大小布局
+var pageContainer = $(".page-container");
+function toPage(index) {
+  pageContainer.style.marginLeft = `-${7.5 * index}rem`;
+}
+toPage(0);
+
+----- 第一页 -----------
+
+1. 解决 聚焦note区域的聚焦输入问题 【中等难度】
+
+    this.doms.txtContent.onfocus = function () {  //this.doms.txtContent 聚焦时的状态函数
+      contentIsFocus = true;
+      resetMarginTop();
+    };
+    
+    this.doms.txtContent.onblur = function () { //this.doms.txtContent 失去焦时的状态函数
+      contentIsFocus = false;
+    };
+
+    function resetMarginTop() {
+      if (window.innerHeight < initHeight - 100 && contentIsFocus) {  //这里只针对note区域的限制性条件，不对author生效
+        // 如果祝福内容聚焦，并且窗口变小
+        pageContainer.style.marginTop = "-3rem";
+      } else {
+        pageContainer.style.marginTop = 0;
+      }
+    }
+    // 监听窗口尺寸的变化
+    window.addEventListener("resize", resetMarginTop);
+
+2. 点击下一页的按钮事件的前提
+     author 和 note区域得有内容------ 双if语句
+
+
+#----------- 第二页 -------------------
+
+#【 编写程序时，先获取并变量保存好元素 】
+ 
+## 1. 获取元素信息。并保存为变量
+  doms: {
+    btnPrev: $("#page2Prev"), // 上一步按钮
+    btnNext: $("#page2Next"), // 下一步按钮
+    audio: $("#audSound"), // 音频元素，用于播放录制的音频
+    btnRecord: $("#btnRecord"), // 录制语音按钮
+    btnPlay: $("#btnPlay"), // 播放/暂停语音按钮
+    btnDelete: $("#btnDelete"), // 删除语音按钮
+    desc: $(".page2 .banner p"), // 用于描述可录制时间的文本
+    number: $(".page2 .number"), // 用于提示剩余时间的元素
+    tape: $(".page2 .g-tape"), // 磁带元素
+  },
+  /*
+   * 用于描述当前的录音信息
+   */
+  sound: {
+    /**
+     * 录制状态，共4种：
+        * no-voice: 没有录制声音
+        * recording: 正在录制中
+        * playing: 正在播放中
+        * stop: 停止播放
+     */
+    status: "no-voice",
+    maxSeconds: 60, // 最大可录制秒数
+    remainSeconds: 0, // 剩余可录制秒数
+    timer: null, // 用于屏幕上显示不断更新剩余秒数的计时器,用于显示 界面的弹出的大数字
+    audioUrl: null, // 录制完成后生成音频播放地址
+  },
+
+
+## 2.  根据当前的录音信息，设置界面 【录制音频区域】
+render: function () {
+  
+###     2.1 预先设置好状态
+   这里使用 if-else等多分支来设置 录用的状态 ----- 【复杂】
+
+###   2.2 事先设置好 录音时的各种状态
+ 
+      if (this.sound.status === "no-voice") {       // 没有录音时的情况分析
+    // 1. 磁带不再转动
+      this.doms.tape.classList.remove("playing");
+      // 2. 录音按钮的文本为：「录制」
+      this.doms.btnRecord.innerText = "录制";
+      // 3. 录音按钮的样式为：「普通」
+      this.doms.btnRecord.className = "btn2";
+      // 4. 播放按钮的文本为：「播放」
+      this.doms.btnPlay.innerText = "播放";
+      // 5. 播放按钮的样式为：「不可用」
+      this.doms.btnPlay.className = "btn2 disabled";
+      // 6. 删除按钮的样式为：「不可用」
+      this.doms.btnDelete.className = "btn2 disabled";
+
+
+    } else if (this.sound.status === "recording") {    // 状态为：「正在录音」
+    
+      // 1. 磁带转动
+      this.doms.tape.classList.add("playing");
+      // 2. 录音按钮的文本为：「停止」
+      this.doms.btnRecord.innerText = "停止";
+      // 3. 录音按钮的样式为：「按下」
+      this.doms.btnRecord.className = "btn2 press";
+      // 4. 播放按钮的文本为：「播放」
+      this.doms.btnPlay.innerText = "播放";
+      // 5. 播放按钮的样式为：「不可用」
+      this.doms.btnPlay.className = "btn2 disabled";
+      // 6. 删除按钮的样式为：「不可用」
+      this.doms.btnDelete.className = "btn2 disabled";
+      // 7. 如果剩余时间小于等于10秒，则需要显示
+      if (this.sound.remainSeconds <= 10) {
+        this.doms.number.innerText = this.sound.remainSeconds;
+      }
+
+    } else if (this.sound.status === "playing") {     // 状态为：「正在播放」
+     
+      // 1. 磁带转动
+      this.doms.tape.classList.add("playing");
+      // 2. 录音按钮的文本为：「重录」
+      this.doms.btnRecord.innerText = "重录";
+      // 3. 录音按钮的样式为：「不可用」
+      this.doms.btnRecord.className = "btn2 disabled";
+      // 4. 播放按钮的文本为：「停止」
+      this.doms.btnPlay.innerText = "停止";
+      // 5. 播放按钮的样式为：「按下」
+      this.doms.btnPlay.className = "btn2 press";
+      // 6. 删除按钮的样式为：「普通」
+      this.doms.btnDelete.className = "btn2";
+
+    } else if (this.sound.status === "stop") {     // 状态为：「停止播放」
+    
+      // 1. 磁带不再转动
+      this.doms.tape.classList.remove("playing");
+      // 2. 录制按钮的文字为：「重录」
+      this.doms.btnRecord.innerText = "重录";
+      // 3. 录制按钮的样式为：「普通」
+      this.doms.btnRecord.className = "btn2";
+      // 4. 播放按钮的文本为：「播放」
+      this.doms.btnPlay.innerText = "播放";
+      // 5. 播放按钮的样式为：「普通」
+      this.doms.btnPlay.className = "btn2";
+      // 6. 删除按钮的样式为：「普通」
+      this.doms.btnDelete.className = "btn2";
+    }
+  },
+
+
+  2.3 开始录制声音 
+  startRecord: async function () {
+    if (this.sound.status !== "no-voice" && this.sound.status !== "stop") {
+      return; // 状态不对，结束
+    }
+    try {
+      // 1. 开启录音功能 await utils.audioRecorder.start();
+      
+      // 2. 状态变化。（ no-voice, stop --> recording） this.sound.status = "recording";
+      // 3. 初始化剩余时间。剩余时间 = 最大可录制时间
+      this.sound.remainSeconds = this.sound.maxSeconds;
+      // 4. render
+      this.render();
+      // 5. 开启计时器，每隔一秒钟减少剩余时间，直到剩余时间为0时停止录音
+      this.sound.timer = setInterval(function () {
+        // 每隔一秒钟，剩余时间-1
+        page2.sound.remainSeconds--;
+        page2.render(); // 重新设置界面
+        if (page2.sound.remainSeconds === 0) {
+          page2.stopRecord();
+        }
+      }, 1000);
+    } catch {
+      alert("无法获取录音权限");
+    }
+  },
+
+  2.4  停止录制声音并上传等
+
+  stopRecord: async function () {
+    if (this.sound.status !== "recording") {
+      return;
+    }
+    // 1. 状态变化。 recording --> stop
+    this.sound.status = "stop";
+    // 2. 停止计时器
+    clearInterval(this.sound.timer);
+    // 3. render
+    this.render();
+    // 4. 开启loading界面，便于后台上穿等功能
+    showLoading();
+    // 5. 停止录音并上传
+    const resp = await utils.audioRecorder.stopAndUpload(       
+      `https://bless.yuanjin.tech/api/upload`,
+      {
+        ***以下为阿里云OSS空间信息，这些信息需要申请阿里云OSS空间后即可获取***
+        region: "oss-cn-beijing",
+        accessKeyId: "LTAI4G2rBkjq2fHPMuK7os8N",
+        accessKeySecret: "FM6I6RoV4PPj0vv3sxhlxN9Ggsa8UU",
+        bucket: "happy-new-year-res",
+      }
+    );
+    // resp.data.url 即为音频url
+    // 6. 设置audio元素的音频源
+    this.doms.audio.src = resp.data.url;
+    // 7. 设置sound.audioUrl
+    this.sound.audioUrl = resp.data.url;
+    // 8. 关闭loading
+    hideLoading();
+  },
+
+## 3. ---- 播放和暂停声音区域 ---
+
+### 3.1 播放录音
+  play: function () {
+    /*
+     * 1. 状态变化。 stop --> playing
+     * 2. 音频元素播放
+     * 3. render
+     */
+    if (this.sound.status !== "stop") {
+      return;
+    }
+    this.sound.status = "playing";
+    this.doms.audio.play();
+    this.render();
+  },
+  
+### 3.2 停止播放录音
+  stop: function () {
+    /*
+     * 1. 状态变化。 playing --> stop
+     * 2. 音频元素暂停
+     * 3. 音频元素播放时间归零
+     * 4. render
+     */
+    if (this.sound.status !== "playing") {
+      return;
+    }
+    this.sound.status = "stop";
+    this.doms.audio.pause();
+    this.doms.audio.currentTime = 0;
+    this.render();
+  },
+### 3.3 移除录音
+  remove: function () {
+    /*
+     * 1. 状态变化。 stop, playing --> no-voice
+     * 2. 去掉音频元素的音频源
+     * 3. 设置 sound.audioUrl 为 null
+     * 4. render
+     */
+    if (this.sound.status !== "stop" && this.sound.status !== "playing") {
+      return;
+    }
+    this.sound.status = "no-voice";
+    this.doms.audio.pause();
+    this.doms.audio.src = "";
+    this.sound.audioUrl = null;
+    this.render();
+  },
+
+  ##  4. 初始化第2页
+  init: function () {
+    //1. 根据录音信息设置界面
+    this.render();
+    //2. 录音按钮事件
+    this.doms.btnRecord.onclick = function () {
+      if (page2.sound.status === "stop" || page2.sound.status === "no-voice") {
+        page2.startRecord();
+      } else if (page2.sound.status === "recording") {
+        page2.stopRecord();
+      }
+    };
+    //3. 播放/暂停按钮事件
+    this.doms.btnPlay.onclick = function () {
+      if (page2.sound.status === "stop") {
+        page2.play();
+      } else if (page2.sound.status === "playing") {
+        page2.stop();
+      }
+    };
+    //4. 移除录音事件
+    this.doms.btnDelete.onclick = function () {
+      if (page2.sound.status === "stop" || page2.sound.status === "playing") {
+        page2.remove();
+      }
+    };
+    //5. 录音播放完成后事件
+    this.doms.audio.addEventListener("ended", function () {
+      page2.stop();
+    });
+    //6. 上一步按钮事件
+    this.doms.btnPrev.onclick = function () {
+      toPage(0);
+    };
+    //7. 下一步按钮事件
+    this.doms.btnNext.onclick = function () {
+      toPage(2);
+      page2.stop();
+      page3.play(); //第二页点击第三页的时候，背景音乐播放
+    };
+  },
+};
+
+page2.init();
+
+=======================================
+
+# 第三页
+
